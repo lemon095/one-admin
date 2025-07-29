@@ -1,110 +1,52 @@
+version: "3.8"
+
+# 生产环境Docker Compose配置
+# 只包含后端API服务，MySQL和Redis使用外部容器
+
 services:
-  # MySQL 数据库（仅用于本地开发，生产环境使用独立部署的容器）
-  mysql:
-    image: mysql:8.0
-    container_name: go-admin-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root}
-      MYSQL_DATABASE: go_admin
-      MYSQL_USER: go_admin
-      MYSQL_PASSWORD: go_admin123
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    command: --default-authentication-plugin=mysql_native_password
-    networks:
-      - go-admin-network
-    profiles:
-      - local # 仅用于本地开发
-
-  # Redis 服务（仅用于本地开发，生产环境使用独立部署的容器）
-  redis:
-    image: redis:7-alpine
-    container_name: go-admin-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
-    networks:
-      - go-admin-network
-    profiles:
-      - local # 仅用于本地开发
-
-  # Go 后端服务（生产环境 - 连接现有数据库容器）
+  # Go 后端服务
   go-admin:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: go-admin-api
-    restart: unless-stopped
     ports:
       - "8081:8081"
     environment:
+      - TZ=UTC
       # 数据库配置 - 连接现有容器
-      DB_HOST: ${DB_HOST:-mysql57}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_USER: ${DB_USER:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-shgytywe!#%65926328}
-      DB_NAME: ${DB_NAME:-go_admin}
+      - DB_HOST=mysql57
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=shgytywe!#%65926328
+      - DB_NAME=go_admin
       # Redis 配置 - 连接现有容器
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-Test!#$1234.hjdgsag}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=Test!#$1234.hjdgsag
       # JWT 配置
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      - JWT_SECRET=your-secret-key-change-in-production
       # 服务器配置
-      SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 8081
-      GIN_MODE: ${GIN_MODE:-release}
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8081
+      - GIN_MODE=release
     volumes:
-      - ./uploads:/app/uploads # 持久化上传目录
+      - uploads_data:/app/uploads
+      - /etc/localtime:/etc/localtime:ro
     networks:
-      - default # 使用默认网络，连接到现有容器
-    profiles:
-      - prod # 生产环境只启动Go服务
-
-  # Go 后端服务（开发环境 - 连接本地数据库）
-  go-admin-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: go-admin-api-dev
+      - db-network
     restart: unless-stopped
-    ports:
-      - "8081:8081"
-    environment:
-      # 数据库配置 - 连接本地数据库
-      DB_HOST: ${DB_HOST:-host.docker.internal}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_USER: ${DB_USER:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-root}
-      DB_NAME: ${DB_NAME:-go_admin}
-      # Redis 配置 - 连接本地Redis
-      REDIS_HOST: ${REDIS_HOST:-host.docker.internal}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      # JWT 配置
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
-      # 服务器配置
-      SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 8081
-      GIN_MODE: ${GIN_MODE:-debug}
-    volumes:
-      - ./uploads:/app/uploads # 持久化上传目录
-    networks:
-      - go-admin-network
-    profiles:
-      - dev # 开发环境不依赖其他服务
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+        compress: "true"
 
 volumes:
-  mysql_data:
-  redis_data:
+  uploads_data: # 文件上传存储卷
+    driver: local
 
 networks:
-  go-admin-network:
-    driver: bridge
+  db-network:
+    external: true
