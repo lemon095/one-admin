@@ -63,7 +63,8 @@ services:
       GIN_MODE: ${GIN_MODE:-release}
     volumes:
       - ./uploads:/app/uploads # 持久化上传目录
-    network_mode: "host" # 使用host网络模式，直接连接本地端口
+    networks:
+      - default # 使用默认网络，连接到现有容器
     profiles:
       - prod # 生产环境只启动Go服务
 
