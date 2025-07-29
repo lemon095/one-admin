@@ -11,11 +11,11 @@ RUN apk add --no-cache git
 COPY go.mod ./
 COPY go.sum* ./
 
-# 下载依赖
-RUN go mod download
-
 # 复制源代码
 COPY . .
+
+# 下载依赖并整理模块
+RUN go mod tidy && go mod download
 
 # 构建应用
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
