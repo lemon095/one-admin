@@ -8,7 +8,8 @@ WORKDIR /app
 RUN apk add --no-cache git
 
 # 复制 go mod 文件
-COPY go.mod go.sum ./
+COPY go.mod ./
+COPY go.sum* ./
 
 # 下载依赖
 RUN go mod download

@@ -182,6 +182,17 @@ start_services() {
     echo -e "${YELLOW}🧹 清理未使用的镜像资源...${NC}"
     docker system prune -f
     
+    # 检查并生成 go.sum 文件
+    if [ ! -f "go.sum" ]; then
+        echo -e "${YELLOW}📝 生成 go.sum 文件...${NC}"
+        if command -v go &> /dev/null; then
+            go mod tidy
+            echo -e "${GREEN}✅ go.sum 文件已生成${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Go 未安装，跳过 go.sum 生成${NC}"
+        fi
+    fi
+    
     # 启动Go服务（生产环境profile）
     echo -e "${YELLOW}📦 构建并启动 Go Admin 服务...${NC}"
     DOCKER_BUILDKIT=0 docker-compose -f $COMPOSE_FILE --profile prod up --build -d
@@ -268,6 +279,17 @@ update_services() {
     # 清理未使用的镜像资源
     echo -e "${YELLOW}🧹 清理未使用的镜像资源...${NC}"
     docker system prune -f
+    
+    # 检查并生成 go.sum 文件
+    if [ ! -f "go.sum" ]; then
+        echo -e "${YELLOW}📝 生成 go.sum 文件...${NC}"
+        if command -v go &> /dev/null; then
+            go mod tidy
+            echo -e "${GREEN}✅ go.sum 文件已生成${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Go 未安装，跳过 go.sum 生成${NC}"
+        fi
+    fi
     
     # 重新构建并启动
     start_services
@@ -362,6 +384,17 @@ build_images() {
     
     check_docker
     check_compose
+    
+    # 检查并生成 go.sum 文件
+    if [ ! -f "go.sum" ]; then
+        echo -e "${YELLOW}📝 生成 go.sum 文件...${NC}"
+        if command -v go &> /dev/null; then
+            go mod tidy
+            echo -e "${GREEN}✅ go.sum 文件已生成${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Go 未安装，跳过 go.sum 生成${NC}"
+        fi
+    fi
     
     DOCKER_BUILDKIT=0 docker-compose -f $COMPOSE_FILE --profile prod build --no-cache
     
