@@ -259,12 +259,26 @@ import {
 import { Upload, UploadFilled, Picture } from "@element-plus/icons-vue";
 import { imageApi } from "@/api";
 
+// 图片类型定义
+interface ImageItem {
+  id: number;
+  image_code: string;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  upload_time: string;
+  expire_time: string;
+  status: string;
+  remaining_time: number;
+  is_expired: boolean;
+}
+
 // 响应式数据
 const loading = ref(false);
 const uploading = ref(false);
 const showUploadDialog = ref(false);
 const showViewDialog = ref(false);
-const currentImage = ref(null);
+const currentImage = ref<ImageItem | null>(null);
 const uploadFormRef = ref<FormInstance>();
 const uploadRef = ref<UploadInstance>();
 
@@ -306,7 +320,7 @@ const pagination = reactive({
 });
 
 // 图片列表
-const imageList = ref([]);
+const imageList = ref<ImageItem[]>([]);
 
 // 加载图片列表
 const loadImages = async () => {

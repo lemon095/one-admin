@@ -63,7 +63,7 @@ import { ref, onMounted, onUnmounted } from "vue";
 import { Sunny, User, Setting, Picture } from "@element-plus/icons-vue";
 
 const currentTime = ref("");
-let timer: NodeJS.Timeout | null = null;
+let timer: number | null = null;
 
 // 更新当前时间
 const updateTime = () => {

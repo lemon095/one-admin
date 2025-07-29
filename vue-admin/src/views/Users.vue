@@ -125,15 +125,24 @@ import {
 } from "element-plus";
 import { userApi } from "@/api";
 
+// 用户类型定义
+interface UserItem {
+  id: number;
+  username: string;
+  email: string;
+  status: string;
+  createTime: string;
+}
+
 // 搜索表单
 const searchForm = reactive({
   username: "",
 });
 
 // 所有用户数据（用于搜索）
-const allUsers = ref([]);
+const allUsers = ref<UserItem[]>([]);
 // 显示的用户列表（过滤后）
-const userList = ref([]);
+const userList = ref<UserItem[]>([]);
 
 // 分页
 const pagination = reactive({
@@ -198,7 +207,9 @@ const filterUsers = () => {
   // 按用户名搜索
   if (searchForm.username) {
     filtered = filtered.filter((user) => {
-      return user.username.toLowerCase().includes(searchForm.username.toLowerCase());
+      return user.username
+        .toLowerCase()
+        .includes(searchForm.username.toLowerCase());
     });
   }
 
@@ -346,4 +357,3 @@ onMounted(() => {
   justify-content: center;
 }
 </style>
- 
