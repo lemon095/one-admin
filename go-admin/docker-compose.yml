@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  # MySQL 数据库（仅在生产环境使用）
+  # MySQL 数据库（仅用于本地开发，生产环境使用独立部署的容器）
   mysql:
     image: mysql:8.0
     container_name: go-admin-mysql
@@ -20,9 +20,9 @@ services:
     networks:
       - go-admin-network
     profiles:
-      - prod # 只在生产环境启动
+      - local # 仅用于本地开发
 
-  # Redis 服务（仅在生产环境使用）
+  # Redis 服务（仅用于本地开发，生产环境使用独立部署的容器）
   redis:
     image: redis:7-alpine
     container_name: go-admin-redis
@@ -35,9 +35,9 @@ services:
     networks:
       - go-admin-network
     profiles:
-      - prod # 只在生产环境启动
+      - local # 仅用于本地开发
 
-  # Go 后端服务
+  # Go 后端服务（生产环境 - 连接现有数据库容器）
   go-admin:
     build:
       context: .
@@ -47,16 +47,16 @@ services:
     ports:
       - "8081:8081"
     environment:
-      # 数据库配置 - 支持环境变量覆盖
-      DB_HOST: ${DB_HOST:-mysql}
+      # 数据库配置 - 连接现有容器
+      DB_HOST: ${DB_HOST:-mysql57}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${DB_USER:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-shgytywe!#%65926328}
       DB_NAME: ${DB_NAME:-go_admin}
-      # Redis 配置 - 支持环境变量覆盖
+      # Redis 配置 - 连接现有容器
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-Test!#$1234.hjdgsag}
       # JWT 配置
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
       # 服务器配置
@@ -65,13 +65,9 @@ services:
       GIN_MODE: ${GIN_MODE:-release}
     volumes:
       - ./uploads:/app/uploads # 持久化上传目录
-    depends_on:
-      - mysql
-      - redis
-    networks:
-      - go-admin-network
+    network_mode: "host" # 使用host网络模式，直接连接本地端口
     profiles:
-      - prod # 生产环境依赖MySQL和Redis
+      - prod # 生产环境只启动Go服务
 
   # Go 后端服务（开发环境 - 连接本地数据库）
   go-admin-dev:

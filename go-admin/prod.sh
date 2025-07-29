@@ -146,34 +146,54 @@ start_redis() {
     echo -e "${GREEN}✅ Redis服务启动成功${NC}"
 }
 
-# 启动生产环境（所有服务）
+# 启动生产环境（只启动Go服务，连接现有数据库）
 start_prod() {
-    echo -e "${BLUE}🚀 启动生产环境（所有服务）...${NC}"
+    echo -e "${BLUE}🚀 启动生产环境（Go服务）...${NC}"
     
     check_docker
     check_compose
-    create_network
+    
+    # 检查数据库容器是否运行
+    echo -e "${YELLOW}🔍 检查数据库服务状态...${NC}"
+    
+    # 检查MySQL容器（支持多种可能的容器名）
+    MYSQL_RUNNING=false
+    if docker ps --format "table {{.Names}}" | grep -q "mysql"; then
+        MYSQL_CONTAINER=$(docker ps --format "table {{.Names}}" | grep "mysql" | head -1)
+        echo -e "${GREEN}✅ 发现MySQL容器: $MYSQL_CONTAINER${NC}"
+        MYSQL_RUNNING=true
+    else
+        echo -e "${RED}❌ 未发现运行中的MySQL容器${NC}"
+        echo -e "${BLUE}💡 请确保MySQL容器正在运行${NC}"
+        exit 1
+    fi
+    
+    # 检查Redis容器（支持多种可能的容器名）
+    REDIS_RUNNING=false
+    if docker ps --format "table {{.Names}}" | grep -q "redis"; then
+        REDIS_CONTAINER=$(docker ps --format "table {{.Names}}" | grep "redis" | head -1)
+        echo -e "${GREEN}✅ 发现Redis容器: $REDIS_CONTAINER${NC}"
+        REDIS_RUNNING=true
+    else
+        echo -e "${RED}❌ 未发现运行中的Redis容器${NC}"
+        echo -e "${BLUE}💡 请确保Redis容器正在运行${NC}"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}✅ 数据库服务检查完成${NC}"
     
     # 清理未使用的镜像资源
     echo -e "${YELLOW}🧹 清理未使用的镜像资源...${NC}"
     docker system prune -f
     
-    # 启动MySQL和Redis
-    start_mysql
-    start_redis
-    
-    # 等待数据库启动
-    echo -e "${YELLOW}⏳ 等待数据库服务启动...${NC}"
-    sleep 10
-    
     # 启动Go服务（生产环境profile）
     echo -e "${YELLOW}📦 构建并启动 Go Admin 服务...${NC}"
     docker-compose -f $COMPOSE_FILE --profile prod up --build -d
     
-         echo -e "${GREEN}🎉 生产环境启动完成！${NC}"
-     echo ""
-     echo -e "${BLUE}📊 服务状态:${NC}"
-     docker ps --filter "name=go-admin-api|$MYSQL_CONTAINER_NAME|$REDIS_CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+    echo -e "${GREEN}🎉 生产环境启动完成！${NC}"
+    echo ""
+    echo -e "${BLUE}📊 服务状态:${NC}"
+    docker ps --filter "name=go-admin-api" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 }
 
 # 启动开发环境（只启动Go服务）
