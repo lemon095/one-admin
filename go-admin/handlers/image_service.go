@@ -280,3 +280,4 @@ func (s *ImageServiceImpl) ScheduleExpireTask(imageID int, imageCode, filePath s
 
 	return s.redisClient.RPush(context.Background(), config.ImageExpireQueue, taskJSON).Err()
 }
+ 

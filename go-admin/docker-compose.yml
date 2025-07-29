@@ -1,13 +1,13 @@
 version: "3.8"
 
 services:
-  # MySQL 数据库
+  # MySQL 数据库（仅在生产环境使用）
   mysql:
     image: mysql:8.0
     container_name: go-admin-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root}
       MYSQL_DATABASE: go_admin
       MYSQL_USER: go_admin
       MYSQL_PASSWORD: go_admin123
@@ -19,8 +19,10 @@ services:
     command: --default-authentication-plugin=mysql_native_password
     networks:
       - go-admin-network
+    profiles:
+      - prod # 只在生产环境启动
 
-  # Redis 服务
+  # Redis 服务（仅在生产环境使用）
   redis:
     image: redis:7-alpine
     container_name: go-admin-redis
@@ -29,9 +31,11 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
     networks:
       - go-admin-network
+    profiles:
+      - prod # 只在生产环境启动
 
   # Go 后端服务
   go-admin:
@@ -43,21 +47,22 @@ services:
     ports:
       - "8081:8081"
     environment:
-      # 数据库配置
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: root
-      DB_NAME: go_admin
-      # Redis 配置
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      # 数据库配置 - 支持环境变量覆盖
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_NAME: ${DB_NAME:-go_admin}
+      # Redis 配置 - 支持环境变量覆盖
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       # JWT 配置
-      JWT_SECRET: your-secret-key-change-in-production
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
       # 服务器配置
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: 8081
-      GIN_MODE: release
+      GIN_MODE: ${GIN_MODE:-release}
     volumes:
       - ./uploads:/app/uploads # 持久化上传目录
     depends_on:
@@ -65,6 +70,41 @@ services:
       - redis
     networks:
       - go-admin-network
+    profiles:
+      - prod # 生产环境依赖MySQL和Redis
+
+  # Go 后端服务（开发环境 - 连接本地数据库）
+  go-admin-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: go-admin-api-dev
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      # 数据库配置 - 连接本地数据库
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_NAME: ${DB_NAME:-go_admin}
+      # Redis 配置 - 连接本地Redis
+      REDIS_HOST: ${REDIS_HOST:-host.docker.internal}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      # JWT 配置
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      # 服务器配置
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8081
+      GIN_MODE: ${GIN_MODE:-debug}
+    volumes:
+      - ./uploads:/app/uploads # 持久化上传目录
+    networks:
+      - go-admin-network
+    profiles:
+      - dev # 开发环境不依赖其他服务
 
 volumes:
   mysql_data:
