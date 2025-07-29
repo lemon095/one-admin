@@ -31,16 +31,12 @@ NETWORK_NAME="go-admin-network"
 show_help() {
     echo -e "${BLUE}Go Admin 生产环境管理脚本${NC}"
     echo ""
-    echo "用法: $0 [环境] [命令]"
-    echo ""
-    echo "环境:"
-    echo "  prod    生产环境 - 启动所有服务（Go + MySQL + Redis）"
-    echo "  dev     开发环境 - 只启动Go服务（连接本地数据库）"
+    echo "用法: $0 [命令]"
     echo ""
     echo "命令:"
-    echo "  start     启动服务"
-    echo "  stop      停止服务"
-    echo "  restart   重启服务"
+    echo "  start     启动Go服务（连接现有数据库）"
+    echo "  stop      停止Go服务"
+    echo "  restart   重启Go服务"
     echo "  update    更新代码并重启"
     echo "  status    查看服务状态"
     echo "  logs      查看服务日志"
@@ -52,10 +48,10 @@ show_help() {
     echo "  help      显示此帮助信息"
     echo ""
     echo "示例:"
-    echo "  $0 prod start    # 生产环境启动所有服务"
-    echo "  $0 dev start     # 开发环境启动Go服务"
-    echo "  $0 prod status   # 查看生产环境状态"
-    echo "  $0 dev logs      # 查看开发环境日志"
+    echo "  $0 start    # 启动Go服务"
+    echo "  $0 stop     # 停止Go服务"
+    echo "  $0 update   # 更新并重启"
+    echo "  $0 status   # 查看状态"
 }
 
 # 检查Docker是否安装
@@ -146,9 +142,9 @@ start_redis() {
     echo -e "${GREEN}✅ Redis服务启动成功${NC}"
 }
 
-# 启动生产环境（只启动Go服务，连接现有数据库）
-start_prod() {
-    echo -e "${BLUE}🚀 启动生产环境（Go服务）...${NC}"
+# 启动Go服务（连接现有数据库）
+start_services() {
+    echo -e "${BLUE}🚀 启动Go服务...${NC}"
     
     check_docker
     check_compose
@@ -190,79 +186,38 @@ start_prod() {
     echo -e "${YELLOW}📦 构建并启动 Go Admin 服务...${NC}"
     docker-compose -f $COMPOSE_FILE --profile prod up --build -d
     
-    echo -e "${GREEN}🎉 生产环境启动完成！${NC}"
+    echo -e "${GREEN}🎉 Go服务启动完成！${NC}"
     echo ""
     echo -e "${BLUE}📊 服务状态:${NC}"
     docker ps --filter "name=go-admin-api" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 }
 
-# 启动开发环境（只启动Go服务）
-start_dev() {
-    echo -e "${BLUE}🚀 启动开发环境（只启动Go服务）...${NC}"
-    
-    check_docker
-    check_compose
-    
-    # 清理未使用的镜像资源
-    echo -e "${YELLOW}🧹 清理未使用的镜像资源...${NC}"
-    docker system prune -f
-    
-    # 启动Go服务（开发环境profile，连接本地数据库）
-    echo -e "${YELLOW}📦 构建并启动 Go Admin 服务...${NC}"
-    echo -e "${BLUE}💡 注意：Go服务将连接本地数据库${NC}"
-    docker-compose -f $COMPOSE_FILE --profile dev up --build -d
-    
-         echo -e "${GREEN}🎉 开发环境启动完成！${NC}"
-     echo ""
-     echo -e "${BLUE}📊 服务状态:${NC}"
-     docker ps --filter "name=go-admin-api-dev" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-}
 
-# 停止生产环境
-stop_prod() {
-    echo -e "${YELLOW}🛑 停止生产环境服务...${NC}"
+
+# 停止Go服务
+stop_services() {
+    echo -e "${YELLOW}🛑 停止Go服务...${NC}"
     
     # 停止Go服务（生产环境profile）
     docker-compose -f $COMPOSE_FILE --profile prod down
     
-    # 停止数据库服务
-    if docker ps --format "table {{.Names}}" | grep -q $MYSQL_CONTAINER_NAME; then
-        docker stop $MYSQL_CONTAINER_NAME
-        echo -e "${GREEN}✅ MySQL服务已停止${NC}"
-    fi
-    
-    if docker ps --format "table {{.Names}}" | grep -q $REDIS_CONTAINER_NAME; then
-        docker stop $REDIS_CONTAINER_NAME
-        echo -e "${GREEN}✅ Redis服务已停止${NC}"
-    fi
+    echo -e "${GREEN}✅ Go服务已停止${NC}"
 }
 
-# 停止开发环境
-stop_dev() {
-    echo -e "${YELLOW}🛑 停止开发环境服务...${NC}"
-    docker-compose -f $COMPOSE_FILE --profile dev down
-}
+
 
 # 重启服务
 restart_services() {
-    local env=$1
-    echo -e "${YELLOW}🔄 重启 $env 环境服务...${NC}"
+    echo -e "${YELLOW}🔄 重启Go服务...${NC}"
     
-    if [ "$env" = "prod" ]; then
-        stop_prod
-        sleep 2
-        start_prod
-    else
-        stop_dev
-        sleep 2
-        start_dev
-    fi
+    stop_services
+    sleep 2
+    start_services
 }
 
 # 更新代码并重启
 update_services() {
-    local env=$1
-    echo -e "${BLUE}🔄 更新 $env 环境服务...${NC}"
+    echo -e "${BLUE}🔄 更新Go服务...${NC}"
     
     check_docker
     check_compose
@@ -308,57 +263,42 @@ update_services() {
     fi
     
     # 停止服务
-    if [ "$env" = "prod" ]; then
-        stop_prod
-    else
-        stop_dev
-    fi
+    stop_services
     
     # 清理未使用的镜像资源
     echo -e "${YELLOW}🧹 清理未使用的镜像资源...${NC}"
     docker system prune -f
     
     # 重新构建并启动
-    if [ "$env" = "prod" ]; then
-        start_prod
-    else
-        start_dev
-    fi
+    start_services
 }
 
 # 查看服务状态
 show_status() {
-    local env=$1
-    echo -e "${BLUE}📊 $env 环境服务状态:${NC}"
+    echo -e "${BLUE}📊 服务状态:${NC}"
     echo ""
     
-         if [ "$env" = "prod" ]; then
-         # 生产环境状态
-         if docker ps --format "table {{.Names}}" | grep -q go-admin-api; then
-             echo -e "${GREEN}✅ Go Admin: 运行中${NC}"
-         else
-             echo -e "${RED}❌ Go Admin: 未运行${NC}"
-         fi
-         
-         if docker ps --format "table {{.Names}}" | grep -q $MYSQL_CONTAINER_NAME; then
-             echo -e "${GREEN}✅ MySQL: 运行中${NC}"
-         else
-             echo -e "${RED}❌ MySQL: 未运行${NC}"
-         fi
-         
-         if docker ps --format "table {{.Names}}" | grep -q $REDIS_CONTAINER_NAME; then
-             echo -e "${GREEN}✅ Redis: 运行中${NC}"
-         else
-             echo -e "${RED}❌ Redis: 未运行${NC}"
-         fi
-     else
-         # 开发环境状态
-         if docker ps --format "table {{.Names}}" | grep -q go-admin-api-dev; then
-             echo -e "${GREEN}✅ Go Admin: 运行中${NC}"
-         else
-             echo -e "${RED}❌ Go Admin: 未运行${NC}"
-         fi
-     fi
+    # 检查Go服务状态
+    if docker ps --format "table {{.Names}}" | grep -q go-admin-api; then
+        echo -e "${GREEN}✅ Go Admin: 运行中${NC}"
+    else
+        echo -e "${RED}❌ Go Admin: 未运行${NC}"
+    fi
+    
+    # 检查数据库服务状态
+    if docker ps --format "table {{.Names}}" | grep -q "mysql"; then
+        MYSQL_CONTAINER=$(docker ps --format "table {{.Names}}" | grep "mysql" | head -1)
+        echo -e "${GREEN}✅ MySQL: 运行中 ($MYSQL_CONTAINER)${NC}"
+    else
+        echo -e "${RED}❌ MySQL: 未运行${NC}"
+    fi
+    
+    if docker ps --format "table {{.Names}}" | grep -q "redis"; then
+        REDIS_CONTAINER=$(docker ps --format "table {{.Names}}" | grep "redis" | head -1)
+        echo -e "${GREEN}✅ Redis: 运行中 ($REDIS_CONTAINER)${NC}"
+    else
+        echo -e "${RED}❌ Redis: 未运行${NC}"
+    fi
     
     echo ""
     echo -e "${BLUE}🔗 连接信息:${NC}"
@@ -375,100 +315,69 @@ show_status() {
 
 # 查看服务日志
 show_logs() {
-    local env=$1
     echo -e "${BLUE}📋 选择要查看的日志:${NC}"
     
-    if [ "$env" = "prod" ]; then
-        echo "1) Go Admin 日志"
-        echo "2) MySQL 日志"
-        echo "3) Redis 日志"
-        echo "4) 所有日志"
-        read -p "请选择 (1-4): " choice
-        
-                 case $choice in
-             1)
-                 echo -e "${YELLOW}📋 Go Admin 日志:${NC}"
-                 docker-compose -f $COMPOSE_FILE --profile prod logs -f go-admin
-                 ;;
-             2)
-                 echo -e "${YELLOW}📋 MySQL 日志:${NC}"
-                 docker logs -f $MYSQL_CONTAINER_NAME
-                 ;;
-             3)
-                 echo -e "${YELLOW}📋 Redis 日志:${NC}"
-                 docker logs -f $REDIS_CONTAINER_NAME
-                 ;;
-             4)
-                 echo -e "${YELLOW}📋 所有服务日志:${NC}"
-                 docker-compose -f $COMPOSE_FILE --profile prod logs -f
-                 docker logs -f $MYSQL_CONTAINER_NAME &
-                 docker logs -f $REDIS_CONTAINER_NAME &
-                 wait
-                 ;;
-            *)
-                echo -e "${RED}❌ 无效选择${NC}"
-                ;;
-        esac
-    else
-        echo "1) Go Admin 日志"
-        echo "2) 所有日志"
-        read -p "请选择 (1-2): " choice
-        
-                 case $choice in
-             1)
-                 echo -e "${YELLOW}📋 Go Admin 日志:${NC}"
-                 docker-compose -f $COMPOSE_FILE --profile dev logs -f go-admin-dev
-                 ;;
-             2)
-                 echo -e "${YELLOW}📋 所有日志:${NC}"
-                 docker-compose -f $COMPOSE_FILE --profile dev logs -f
-                 ;;
-            *)
-                echo -e "${RED}❌ 无效选择${NC}"
-                ;;
-        esac
-    fi
+    echo "1) Go Admin 日志"
+    echo "2) MySQL 日志"
+    echo "3) Redis 日志"
+    echo "4) 所有日志"
+    read -p "请选择 (1-4): " choice
+    
+    case $choice in
+        1)
+            echo -e "${YELLOW}📋 Go Admin 日志:${NC}"
+            docker-compose -f $COMPOSE_FILE --profile prod logs -f go-admin
+            ;;
+        2)
+            echo -e "${YELLOW}📋 MySQL 日志:${NC}"
+            MYSQL_CONTAINER=$(docker ps --format "table {{.Names}}" | grep "mysql" | head -1)
+            if [ -n "$MYSQL_CONTAINER" ]; then
+                docker logs -f $MYSQL_CONTAINER
+            else
+                echo -e "${RED}❌ MySQL容器未运行${NC}"
+            fi
+            ;;
+        3)
+            echo -e "${YELLOW}📋 Redis 日志:${NC}"
+            REDIS_CONTAINER=$(docker ps --format "table {{.Names}}" | grep "redis" | head -1)
+            if [ -n "$REDIS_CONTAINER" ]; then
+                docker logs -f $REDIS_CONTAINER
+            else
+                echo -e "${RED}❌ Redis容器未运行${NC}"
+            fi
+            ;;
+        4)
+            echo -e "${YELLOW}📋 所有服务日志:${NC}"
+            docker-compose -f $COMPOSE_FILE --profile prod logs -f
+            ;;
+        *)
+            echo -e "${RED}❌ 无效选择${NC}"
+            ;;
+    esac
 }
 
 # 重新构建镜像
 build_images() {
-    local env=$1
-    echo -e "${BLUE}🔨 重新构建 $env 环境镜像...${NC}"
+    echo -e "${BLUE}🔨 重新构建Go服务镜像...${NC}"
     
     check_docker
     check_compose
     
-    if [ "$env" = "prod" ]; then
-        docker-compose -f $COMPOSE_FILE --profile prod build --no-cache
-    else
-        docker-compose -f $COMPOSE_FILE --profile dev build --no-cache
-    fi
+    docker-compose -f $COMPOSE_FILE --profile prod build --no-cache
     
     echo -e "${GREEN}✅ 镜像构建完成${NC}"
 }
 
 # 清理容器和镜像
 clean_services() {
-    local env=$1
-    echo -e "${RED}⚠️  危险操作！这将删除所有容器和镜像！${NC}"
+    echo -e "${RED}⚠️  危险操作！这将删除Go服务容器和镜像！${NC}"
     read -p "确定要继续吗？(输入 'yes' 确认): " confirm
     
     if [ "$confirm" = "yes" ]; then
-        echo -e "${YELLOW}🧹 清理 $env 环境容器和镜像...${NC}"
+        echo -e "${YELLOW}🧹 清理Go服务容器和镜像...${NC}"
         
-        # 停止并删除容器
-        if [ "$env" = "prod" ]; then
-            docker-compose -f $COMPOSE_FILE --profile prod down --rmi all --volumes --remove-orphans
-        else
-            docker-compose -f $COMPOSE_FILE --profile dev down --rmi all --volumes --remove-orphans
-        fi
-        
-        if [ "$env" = "prod" ]; then
-            docker stop $MYSQL_CONTAINER_NAME $REDIS_CONTAINER_NAME 2>/dev/null || true
-            docker rm $MYSQL_CONTAINER_NAME $REDIS_CONTAINER_NAME 2>/dev/null || true
-            docker network rm $NETWORK_NAME 2>/dev/null || true
-            docker volume rm mysql_data redis_data 2>/dev/null || true
-        fi
+        # 停止并删除Go服务容器
+        docker-compose -f $COMPOSE_FILE --profile prod down --rmi all --volumes --remove-orphans
         
         # 清理未使用的镜像
         docker system prune -a -f
@@ -481,76 +390,70 @@ clean_services() {
 
 # 备份数据库
 backup_database() {
-    local env=$1
     echo -e "${BLUE}💾 备份数据库...${NC}"
     
-    if [ "$env" = "prod" ]; then
-        if ! docker ps --format "table {{.Names}}" | grep -q $MYSQL_CONTAINER_NAME; then
-            echo -e "${RED}❌ MySQL服务未运行${NC}"
-            return 1
-        fi
-        
-        # 创建备份目录
-        mkdir -p backups
-        BACKUP_FILE="backups/mysql_backup_$(date +%Y%m%d_%H%M%S).sql"
-        
-        # 执行备份
-        docker exec $MYSQL_CONTAINER_NAME mysqldump -u root -p"$MYSQL_PASSWORD" --all-databases > "$BACKUP_FILE"
-        
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✅ 数据库备份成功: $BACKUP_FILE${NC}"
-        else
-            echo -e "${RED}❌ 数据库备份失败${NC}"
-        fi
+    # 查找MySQL容器
+    MYSQL_CONTAINER=$(docker ps --format "table {{.Names}}" | grep "mysql" | head -1)
+    if [ -z "$MYSQL_CONTAINER" ]; then
+        echo -e "${RED}❌ MySQL服务未运行${NC}"
+        return 1
+    fi
+    
+    # 创建备份目录
+    mkdir -p backups
+    BACKUP_FILE="backups/mysql_backup_$(date +%Y%m%d_%H%M%S).sql"
+    
+    # 执行备份
+    docker exec $MYSQL_CONTAINER mysqldump -u root -p"$MYSQL_PASSWORD" --all-databases > "$BACKUP_FILE"
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ 数据库备份成功: $BACKUP_FILE${NC}"
     else
-        echo -e "${YELLOW}⚠️  开发环境请手动备份本地数据库${NC}"
+        echo -e "${RED}❌ 数据库备份失败${NC}"
     fi
 }
 
 # 恢复数据库
 restore_database() {
-    local env=$1
     echo -e "${BLUE}📥 恢复数据库...${NC}"
     
-    if [ "$env" = "prod" ]; then
-        if ! docker ps --format "table {{.Names}}" | grep -q $MYSQL_CONTAINER_NAME; then
-            echo -e "${RED}❌ MySQL服务未运行${NC}"
-            return 1
-        fi
+    # 查找MySQL容器
+    MYSQL_CONTAINER=$(docker ps --format "table {{.Names}}" | grep "mysql" | head -1)
+    if [ -z "$MYSQL_CONTAINER" ]; then
+        echo -e "${RED}❌ MySQL服务未运行${NC}"
+        return 1
+    fi
+    
+    # 列出备份文件
+    if [ ! -d "backups" ] || [ -z "$(ls -A backups 2>/dev/null)" ]; then
+        echo -e "${RED}❌ 没有找到备份文件${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}📋 可用的备份文件:${NC}"
+    ls -la backups/*.sql
+    
+    read -p "请输入要恢复的备份文件路径: " backup_file
+    
+    if [ ! -f "$backup_file" ]; then
+        echo -e "${RED}❌ 备份文件不存在${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}⚠️  这将覆盖现有数据！${NC}"
+    read -p "确定要继续吗？(输入 'yes' 确认): " confirm
+    
+    if [ "$confirm" = "yes" ]; then
+        # 执行恢复
+        docker exec -i $MYSQL_CONTAINER mysql -u root -p"$MYSQL_PASSWORD" < "$backup_file"
         
-        # 列出备份文件
-        if [ ! -d "backups" ] || [ -z "$(ls -A backups 2>/dev/null)" ]; then
-            echo -e "${RED}❌ 没有找到备份文件${NC}"
-            return 1
-        fi
-        
-        echo -e "${YELLOW}📋 可用的备份文件:${NC}"
-        ls -la backups/*.sql
-        
-        read -p "请输入要恢复的备份文件路径: " backup_file
-        
-        if [ ! -f "$backup_file" ]; then
-            echo -e "${RED}❌ 备份文件不存在${NC}"
-            return 1
-        fi
-        
-        echo -e "${YELLOW}⚠️  这将覆盖现有数据！${NC}"
-        read -p "确定要继续吗？(输入 'yes' 确认): " confirm
-        
-        if [ "$confirm" = "yes" ]; then
-            # 执行恢复
-            docker exec -i $MYSQL_CONTAINER_NAME mysql -u root -p"$MYSQL_PASSWORD" < "$backup_file"
-            
-            if [ $? -eq 0 ]; then
-                echo -e "${GREEN}✅ 数据库恢复成功${NC}"
-            else
-                echo -e "${RED}❌ 数据库恢复失败${NC}"
-            fi
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✅ 数据库恢复成功${NC}"
         else
-            echo -e "${YELLOW}❌ 操作已取消${NC}"
+            echo -e "${RED}❌ 数据库恢复失败${NC}"
         fi
     else
-        echo -e "${YELLOW}⚠️  开发环境请手动恢复本地数据库${NC}"
+        echo -e "${YELLOW}❌ 操作已取消${NC}"
     fi
 }
 
@@ -590,65 +493,41 @@ show_stash() {
 
 # 主函数
 main() {
-    local env="${1:-}"
-    local command="${2:-}"
+    local command="${1:-}"
     
-    case "$env" in
-        prod|dev)
-            case "$command" in
-                start)
-                    if [ "$env" = "prod" ]; then
-                        start_prod
-                    else
-                        start_dev
-                    fi
+    case "$command" in
+                        start)
+                    start_services
                     ;;
-                stop)
-                    if [ "$env" = "prod" ]; then
-                        stop_prod
-                    else
-                        stop_dev
-                    fi
+                        stop)
+                    stop_services
                     ;;
-                restart)
-                    restart_services "$env"
-                    ;;
-                update)
-                    update_services "$env"
-                    ;;
-                status)
-                    show_status "$env"
-                    ;;
-                logs)
-                    show_logs "$env"
-                    ;;
-                build)
-                    build_images "$env"
-                    ;;
-                clean)
-                    clean_services "$env"
-                    ;;
-                backup)
-                    backup_database "$env"
-                    ;;
-                restore)
-                    restore_database "$env"
-                    ;;
-                stash)
-                    show_stash
-                    ;;
-                help|--help|-h)
-                    show_help
-                    ;;
-                "")
-                    show_help
-                    ;;
-                *)
-                    echo -e "${RED}❌ 未知命令: $command${NC}"
-                    show_help
-                    exit 1
-                    ;;
-            esac
+        restart)
+            restart_services
+            ;;
+        update)
+            update_services
+            ;;
+        status)
+            show_status
+            ;;
+        logs)
+            show_logs
+            ;;
+        build)
+            build_images
+            ;;
+        clean)
+            clean_services
+            ;;
+        backup)
+            backup_database
+            ;;
+        restore)
+            restore_database
+            ;;
+        stash)
+            show_stash
             ;;
         help|--help|-h)
             show_help
@@ -657,8 +536,7 @@ main() {
             show_help
             ;;
         *)
-            echo -e "${RED}❌ 未知环境: $env${NC}"
-            echo -e "${YELLOW}支持的环境: prod, dev${NC}"
+            echo -e "${RED}❌ 未知命令: $command${NC}"
             show_help
             exit 1
             ;;
