@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # 配置变量
 MYSQL_PASSWORD="shgytywe!#%65926328"
-REDIS_PASSWORD="Test!#$1234.hjdgsag"
+REDIS_PASSWORD='Test!#$1234.hjdgsag'
 MYSQL_PORT="3306"
 REDIS_PORT="6379"
 MYSQL_CONTAINER_NAME="mysql57"
