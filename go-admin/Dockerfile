@@ -7,8 +7,9 @@ WORKDIR /app
 # 安装必要的系统依赖
 RUN apk add --no-cache git
 
-# 复制 go mod 文件
-COPY go.mod go.sum ./
+# 复制 go mod 文件（go.sum可能不存在）
+COPY go.mod ./
+COPY go.sum* ./
 
 # 下载依赖
 RUN go mod download
