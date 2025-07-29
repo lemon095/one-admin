@@ -184,7 +184,7 @@ start_services() {
     
     # 启动Go服务（生产环境profile）
     echo -e "${YELLOW}📦 构建并启动 Go Admin 服务...${NC}"
-    docker-compose -f $COMPOSE_FILE --profile prod up --build -d
+    DOCKER_BUILDKIT=0 docker-compose -f $COMPOSE_FILE --profile prod up --build -d
     
     echo -e "${GREEN}🎉 Go服务启动完成！${NC}"
     echo ""
@@ -363,7 +363,7 @@ build_images() {
     check_docker
     check_compose
     
-    docker-compose -f $COMPOSE_FILE --profile prod build --no-cache
+    DOCKER_BUILDKIT=0 docker-compose -f $COMPOSE_FILE --profile prod build --no-cache
     
     echo -e "${GREEN}✅ 镜像构建完成${NC}"
 }

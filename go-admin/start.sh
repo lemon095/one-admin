@@ -10,7 +10,7 @@ fi
 
 # 构建并启动服务
 echo "📦 构建并启动 Docker 容器..."
-docker-compose up --build -d
+DOCKER_BUILDKIT=0 docker-compose up --build -d
 
 # 等待服务启动
 echo "⏳ 等待服务启动..."

@@ -40,8 +40,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        BUILDKIT_PROGRESS: plain
     container_name: go-admin-api
     restart: unless-stopped
     ports:
