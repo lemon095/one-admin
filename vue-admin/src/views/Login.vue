@@ -67,8 +67,8 @@ const loginFormRef = ref<FormInstance>();
 const loading = ref(false);
 
 const loginForm = reactive({
-  username: "admin",
-  password: "admin123",
+  username: "",
+  password: "",
   remember: false,
 });
 
